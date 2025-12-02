@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   const loadDemoFile = async () => {
     try {
-      const response = await fetch("/attached_assets/Hemitech_RAB_1764668983278.xlsx");
+      const response = await fetch("/attached_assets/Hemitech_RAB_1764669277951.xlsx");
       if (!response.ok) throw new Error("Demo file not found");
       
       const arrayBuffer = await response.arrayBuffer();

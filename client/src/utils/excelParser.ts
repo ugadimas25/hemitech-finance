@@ -175,10 +175,14 @@ export const parseHemitechExcel = (workbook: XLSX.WorkBook): HemitechData => {
   const resourceCost = totalEmployeeCostYearly;
   const calculatedTotalCost = resourceCost + totalOpexYearly + totalCapex;
 
+  // User request: "Total Revenue should be Cost minus Income"
+  // This likely represents the Funding Requirement or Deficit.
+  const calculatedRevenue = calculatedTotalCost - totalYearlyRevenue;
+
   const summary: Summary = {
     totalCost: calculatedTotalCost,
     totalIncome: totalYearlyRevenue,
-    revenue: totalYearlyRevenue,
+    revenue: calculatedRevenue, 
     resourceCost: resourceCost,
     opexCost: totalOpexYearly,
     capexCost: totalCapex

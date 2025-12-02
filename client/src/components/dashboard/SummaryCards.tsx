@@ -38,12 +38,12 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
       desc: "Income - Cost"
     },
     {
-      title: "Revenue",
+      title: "Revenue Gap (Cost - Income)",
       value: summary.revenue,
       icon: DollarSign,
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-100/50 dark:bg-blue-500/10",
-      desc: "Gross revenue target"
+      desc: "Funding needed"
     }
   ];
 

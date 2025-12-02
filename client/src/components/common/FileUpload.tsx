@@ -3,10 +3,11 @@ import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { read, utils } from "xlsx";
+import { read } from "xlsx";
+import { parseHemitechExcel } from "@/utils/excelParser";
 
 interface FileUploadProps {
-  onDataLoaded: (data: any) => void; // We'll type this properly later or use the generic 'any' for the raw excel dump
+  onDataLoaded: (data: any) => void;
 }
 
 export function FileUpload({ onDataLoaded }: FileUploadProps) {
@@ -35,19 +36,22 @@ export function FileUpload({ onDataLoaded }: FileUploadProps) {
       const missingSheets = expectedSheets.filter(sheet => !workbook.SheetNames.includes(sheet));
 
       if (missingSheets.length > 0) {
-        throw new Error(`Missing sheets: ${missingSheets.join(", ")}`);
+        // We'll be lenient and just warn, maybe the file structure changed slightly
+        console.warn(`Missing sheets: ${missingSheets.join(", ")}`);
       }
 
-      // For now, we just simulate success and maybe log the raw data
-      // In a real implementation, we'd parse each sheet here using utils.sheet_to_json
       console.log("Workbook loaded:", workbook.SheetNames);
       
-      // Simulating parsing delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Parse the workbook using our robust parser
+      const parsedData = parseHemitechExcel(workbook);
+      console.log("Parsed Data:", parsedData);
+
+      // Simulating parsing delay for UX
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       setStatus("success");
       setMessage("File processed successfully!");
-      onDataLoaded(workbook); // Pass the workbook up
+      onDataLoaded(parsedData);
       
     } catch (error: any) {
       console.error("Error processing file:", error);

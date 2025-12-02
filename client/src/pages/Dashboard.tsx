@@ -11,8 +11,9 @@ import { FileUpload } from "@/components/common/FileUpload";
 import { mockHemitechData } from "@/data/mockHemitechRab";
 import { HemitechData } from "@/types/finance";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
-import { utils } from "xlsx";
+import { Download, FileInput } from "lucide-react";
+import { utils, read } from "xlsx";
+import { parseHemitechExcel } from "@/utils/excelParser";
 
 export default function Dashboard() {
   const [location] = useLocation();
@@ -22,18 +23,29 @@ export default function Dashboard() {
   const currentView = location === "/" ? "overview" 
     : location.slice(1); // remove leading slash
 
-  const handleDataLoaded = (workbook: any) => {
-    console.log("Workbook received in Dashboard:", workbook);
+  const handleDataLoaded = (parsedData: HemitechData) => {
+    console.log("Data received in Dashboard:", parsedData);
+    setData(parsedData);
     
-    // TODO: Implement full Excel parsing logic here
-    // 1. Parse 'SUMMARY' sheet to data.summary
-    // 2. Parse 'CAPEX (Setup Awal)' to data.capex
-    // 3. Parse 'OPEX (Bulanan & Tahunan)' to data.opex
-    // 4. Parse 'Pegawai' to data.employees
-    // 5. Parse 'Revenue' to data.revenue
+    // If we are on the overview page, maybe show a toast?
+    // For now just updating state is enough
+  };
 
-    // For now, we alert the user that this is a prototype feature
-    alert("Excel loaded! In a full implementation, this would parse the specific sheets and replace the mock data. Check console for workbook object.");
+  const loadDemoFile = async () => {
+    try {
+      const response = await fetch("/attached_assets/Hemitech_RAB_1764667122984.xlsx");
+      if (!response.ok) throw new Error("Demo file not found");
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = read(arrayBuffer);
+      const parsedData = parseHemitechExcel(workbook);
+      
+      setData(parsedData);
+      alert("Demo Hemitech RAB file loaded!");
+    } catch (error) {
+      console.error("Failed to load demo file", error);
+      alert("Could not load demo file automatically. Please upload it manually.");
+    }
   };
 
   const renderContent = () => {
@@ -58,7 +70,13 @@ export default function Dashboard() {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                <div className="space-y-4">
-                 <h3 className="text-lg font-semibold">Data Source</h3>
+                 <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Data Source</h3>
+                    <Button variant="outline" size="sm" onClick={loadDemoFile}>
+                      <FileInput className="mr-2 h-4 w-4" />
+                      Load Hemitech RAB
+                    </Button>
+                 </div>
                  <FileUpload onDataLoaded={handleDataLoaded} />
                </div>
                

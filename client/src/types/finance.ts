@@ -39,6 +39,11 @@ export interface Employee {
 export interface RevenueStream {
   id: string;
   name: string;
+  unitResidence?: number;
+  residence?: number;
+  paymentGateway?: number;
+  avgTransaction?: number;
+  subscriptionPerMonth?: number;
   monthly: number;
   yearly: number;
 }

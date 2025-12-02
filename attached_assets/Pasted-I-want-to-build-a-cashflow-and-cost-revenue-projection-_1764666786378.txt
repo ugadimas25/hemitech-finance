@@ -1,0 +1,140 @@
+I want to build a cashflow and cost–revenue projection web dashboard based on an Excel file named "Hemitech RAB.xlsx".
+
+Tech stack:
+- React + TypeScript (Vite or CRA, up to you)
+- Tailwind CSS for styling
+- A chart library (Recharts or Chart.js)
+- Use functional components and hooks
+
+Excel structure (sheets and key columns):
+
+1) Sheet "SUMMARY"
+- Contains aggregated numbers:
+  - Cost / Resource / OPEX / CAPEX
+  - Total Cost (C5)
+  - Total Income (C7)
+  - Revenue (C9)
+Use these values to generate:
+- KPI cards:
+  - Total Cost
+  - Total Income
+  - Net Profit (Total Income – Total Cost)
+  - Revenue
+- Also show a simple bar chart comparing:
+  - Resource
+  - OPEX
+  - CAPEX
+  - Total Cost
+  - Total Income
+
+2) Sheet "CAPEX (Setup Awal)"
+Columns:
+- Kategori (A)
+- Item (B)
+- Description (C)
+- Qty (D)
+- Harga Satuan (Rp) (E)
+- Total (Rp) (F)
+Use this to:
+- Show a CAPEX table with sorting and simple search
+- Show a bar chart total CAPEX per Kategori (sum of F per Kategori)
+- Show total CAPEX value at the bottom
+
+3) Sheet "OPEX (Bulanan & Tahunan)"
+Columns:
+- Kategori (A)
+- Item (B)
+- Total Bulanan (Rp) (C)
+- Total Tahunan (Rp) (D)
+Use this to:
+- Show an OPEX table
+- Show two summary numbers:
+  - Total OPEX Bulanan (sum of C)
+  - Total OPEX Tahunan (sum of D)
+- Show a bar chart of Total Tahunan per Kategori
+
+4) Sheet "Pegawai"
+Columns:
+- Kategori / Level (A)
+- Role (B)
+- Qty (D)
+- Salary/month (E)
+- Total Salary/month (F)
+- Total Salary/year (G)
+- THR / Benefit (H)
+Use this to:
+- Show staff cost breakdown (table)
+- Show number of employees (sum of Qty)
+- Show total salary cost per year (sum of G)
+- Optional: bar chart of Total Salary/year per Role
+
+5) Sheet "Revenue"
+Important rows/columns:
+- Target, Subscription, Grand Total / Year
+- Income/month (row with label "Income/month")
+- Income/year (row with label "Income/year")
+Use this to:
+- Show total Revenue per month and per year
+- Show a stacked bar or simple bar chart for each revenue stream (e.g. Payment Gateway Fees, Subscription, etc.)
+
+Data handling:
+- For now, create TypeScript interfaces that represent each logical entity:
+  - Summary, CapexItem, OpexItem, Employee, RevenueSummary
+- Mock the data in a separate file (e.g. src/data/mockHemitechRab.ts) based on the sample structure above.
+- Put all calculations (totals and aggregations) in reusable utility functions (e.g. src/utils/finance.ts).
+
+Cashflow & projection:
+- Build a "Cashflow Projection" section that:
+  - Takes:
+    - Base yearly revenue (from Revenue sheet)
+    - Base yearly cost (OPEX + salaries + CAPEX amortization if needed)
+  - Has user inputs for:
+    - Revenue growth per year (%)
+    - Cost growth per year (%)
+    - Projection period (e.g. 5 years)
+  - Calculates:
+    - Revenue per year
+    - Cost per year
+    - Net cashflow per year (revenue – cost)
+    - Cumulative cash position over the projection period
+  - Displays this as:
+    - A line chart for Revenue vs Cost vs Net Cashflow
+    - A second line or area chart for Cumulative Cash Position
+
+Excel integration (frontend only):
+- Add a simple upload component that accepts an .xlsx file.
+- Use the "xlsx" (SheetJS) library in the browser to parse:
+  - "SUMMARY"
+  - "CAPEX (Setup Awal)"
+  - "OPEX (Bulanan & Tahunan)"
+  - "Pegawai"
+  - "Revenue"
+- Map the parsed rows into the same TypeScript interfaces used by the mock data.
+- When a file is uploaded successfully, replace the mock data with data from the uploaded Excel.
+
+UI/UX requirements:
+- Create a main layout with:
+  - Header: project name "Hemitech Cashflow Dashboard"
+  - Left sidebar or top navigation with sections:
+    - Overview
+    - CAPEX
+    - OPEX
+    - Pegawai
+    - Revenue
+    - Cashflow Projection
+  - Main content area that switches between sections.
+- Use responsive design (works on desktop and tablet).
+- Use Tailwind utility classes to:
+  - Show KPI cards in a grid.
+  - Show tables with sticky headers and scrolling.
+  - Add small hover effects on cards and chart containers.
+
+Deliverables:
+- A complete React + TypeScript project structure with:
+  - Components: SummaryCards, CapexSection, OpexSection, EmployeesSection, RevenueSection, CashflowProjectionSection, Layout, FileUpload
+  - Data and types: src/data/mockHemitechRab.ts, src/types/*
+  - Utils: src/utils/finance.ts for calculations
+- Example charts using the mocked data.
+- Clear TODO comments indicating where I should plug in the real Excel parsing logic or API later.
+
+Please generate all necessary files, React components, and utility functions to make this dashboard compile and run as a working example.

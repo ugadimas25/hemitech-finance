@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   const loadDemoFile = async () => {
     try {
-      const response = await fetch("/attached_assets/Hemitech_RAB_1764667122984.xlsx");
+      const response = await fetch("/attached_assets/Hemitech_RAB_1764668067466.xlsx");
       if (!response.ok) throw new Error("Demo file not found");
       
       const arrayBuffer = await response.arrayBuffer();
@@ -41,7 +41,7 @@ export default function Dashboard() {
       const parsedData = parseHemitechExcel(workbook);
       
       setData(parsedData);
-      alert("Demo Hemitech RAB file loaded!");
+      // alert("Demo Hemitech RAB file loaded!"); // Silent load is better for UX sometimes
     } catch (error) {
       console.error("Failed to load demo file", error);
       alert("Could not load demo file automatically. Please upload it manually.");

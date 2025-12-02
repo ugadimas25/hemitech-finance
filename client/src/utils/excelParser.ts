@@ -18,51 +18,27 @@ const cleanNumber = (val: any): number => {
 export const parseHemitechExcel = (workbook: XLSX.WorkBook): HemitechData => {
   const sheets = workbook.Sheets;
   
-  // --- 1. SUMMARY ---
-  const summarySheet = sheets['SUMMARY'];
-  const summaryData = XLSX.utils.sheet_to_json(summarySheet, { header: 1 }) as any[][];
-  
-  // Based on inspection:
-  // Row 1 (index 1): [null, "Resource", 1584000000]
-  // Row 2 (index 2): [null, "OPEX", 1050000000]
-  // Row 3 (index 3): [null, "CAPEX", 404000000]
-  // Row 4 (index 4): ["Total Cost", null, 3038000000]
-  
-  // We'll search for these labels to be safe
-  const resourceCost = findValueByLabel(summaryData, "Resource", 1, 2);
-  const opexCost = findValueByLabel(summaryData, "OPEX", 1, 2);
-  const capexCost = findValueByLabel(summaryData, "CAPEX", 1, 2);
-  const totalCost = findValueByLabel(summaryData, "Total Cost", 0, 2);
-  const totalIncome = findValueByLabel(summaryData, "Total Income", 0, 2) || findValueByLabel(summaryData, "Total Income", 1, 2) || 0;
-  const revenue = findValueByLabel(summaryData, "Revenue", 0, 2) || findValueByLabel(summaryData, "Revenue", 1, 2) || 0;
-
-  const summary: Summary = {
-    totalCost: totalCost || (resourceCost + opexCost + capexCost),
-    totalIncome,
-    revenue,
-    resourceCost,
-    opexCost,
-    capexCost
-  };
-
-  // --- 2. CAPEX ---
+  // --- 1. CAPEX ---
+  // Sheet: 'CAPEX (Setup Awal)'
   const capexSheet = sheets['CAPEX (Setup Awal)'];
-  // Headers at row 0: Kategori, Item, Description, Qty, Harga Satuan (Rp), Total (Rp)
   const capexJson = XLSX.utils.sheet_to_json(capexSheet, { header: 0 }) as any[];
   
   const capex: CapexItem[] = capexJson.map((row, idx) => ({
     id: `c-${idx}`,
     kategori: row['Kategori'] || 'Uncategorized',
     item: row['Item'] || 'Unnamed Item',
-    description: row['Description'] || '',
+    // Description column is missing in new file, defaulting to empty
+    description: '', 
     qty: cleanNumber(row['Qty']),
     hargaSatuan: cleanNumber(row['Harga Satuan (Rp)']),
     total: cleanNumber(row['Total (Rp)'])
-  })).filter(item => item.total > 0); // Filter out empty rows
+  })).filter(item => item.total > 0);
 
-  // --- 3. OPEX ---
+  const totalCapex = capex.reduce((sum, item) => sum + item.total, 0);
+
+  // --- 2. OPEX ---
+  // Sheet: 'OPEX (Bulanan & Tahunan)'
   const opexSheet = sheets['OPEX (Bulanan & Tahunan)'];
-  // Headers at row 0: Kategori, Item, Total Bulanan (Rp), Total Tahunan (Rp)
   const opexJson = XLSX.utils.sheet_to_json(opexSheet, { header: 0 }) as any[];
 
   const opex: OpexItem[] = opexJson.map((row, idx) => ({
@@ -73,19 +49,17 @@ export const parseHemitechExcel = (workbook: XLSX.WorkBook): HemitechData => {
     totalTahunan: cleanNumber(row['Total Tahunan (Rp)'])
   })).filter(item => item.totalBulanan > 0);
 
-  // --- 4. PEGAWAI ---
+  const totalOpexYearly = opex.reduce((sum, item) => sum + item.totalTahunan, 0);
+
+  // --- 3. PEGAWAI ---
+  // Sheet: 'Pegawai'
   const pegawaiSheet = sheets['Pegawai'];
   const pegawaiData = XLSX.utils.sheet_to_json(pegawaiSheet, { header: 1 }) as any[][];
-  
-  // We inspected and saw data starts roughly at index 2 or 3
-  // Headers are messy. Let's assume column indices based on inspection.
-  // A(0): Level? B(1): Role? D(3): Qty, E(4): Salary, G(6): Total Year
-  // We will skip the first few header rows.
   
   const employees: Employee[] = [];
   let startRowIndex = 0;
   
-  // Find the header row that contains "Qty"
+  // Find header row with "Qty"
   pegawaiData.forEach((row, idx) => {
     if (row.some(cell => String(cell).includes("Qty"))) {
       startRowIndex = idx + 1;
@@ -96,9 +70,14 @@ export const parseHemitechExcel = (workbook: XLSX.WorkBook): HemitechData => {
     const row = pegawaiData[i];
     if (!row || row.length === 0) continue;
 
-    // Heuristic: Check if Qty (col 3) is a number
-    const qty = cleanNumber(row[3]);
-    const role = row[1] || row[2]; // Role might be in col 1 or 2 depending on merge
+    // Heuristic based on new file inspection (similar to old but double checking)
+    // We assume the structure is roughly:
+    // Col 0: Level? Col 1/2: Role? Col 3: Qty?
+    // Let's be defensive and try to find numeric columns if fixed indices fail
+    
+    const qty = cleanNumber(row[3]); 
+    // Role usually in col 1 or 2
+    const role = row[1] || row[2]; 
     
     if (qty > 0 && role) {
       employees.push({
@@ -106,74 +85,114 @@ export const parseHemitechExcel = (workbook: XLSX.WorkBook): HemitechData => {
         level: row[0] || 'Staff',
         role: String(role),
         qty: qty,
-        salaryMonth: cleanNumber(row[4]),
-        totalSalaryMonth: cleanNumber(row[5]),
-        totalSalaryYear: cleanNumber(row[6]),
-        thrBenefit: cleanNumber(row[7])
+        salaryMonth: cleanNumber(row[4]), // E
+        totalSalaryMonth: cleanNumber(row[5]), // F
+        totalSalaryYear: cleanNumber(row[6]), // G
+        thrBenefit: cleanNumber(row[7]) // H
       });
     }
   }
 
-  // --- 5. REVENUE ---
+  const totalEmployeeCostYearly = employees.reduce((sum, item) => sum + item.totalSalaryYear, 0);
+
+  // --- 4. REVENUE ---
+  // Sheet: 'Revenue'
   const revenueSheet = sheets['Revenue'];
+  // New structure: Data table with headers at row 0
+  // "Income type", "Income/month", "Income/year"
   const revenueData = XLSX.utils.sheet_to_json(revenueSheet, { header: 1 }) as any[][];
   
-  // We need to find specific rows.
-  // Looking for "Income/month" and "Income/year"
-  // And revenue streams.
-  
-  // Let's try to find the Total rows first
-  const totalMonthly = findValueByLabel(revenueData, "Income/month", 0, 1) || 
-                       findValueByLabel(revenueData, "Income/month", 1, 2) || 0; // Try different col combos
-                       
-  const totalYearly = findValueByLabel(revenueData, "Income/year", 0, 1) || 
-                      findValueByLabel(revenueData, "Income/year", 1, 2) || 0;
-
-  // For streams, this is tricky without a strict structure. 
-  // We'll grab a few known ones if they exist or just use what we found.
-  // If totals are 0, we might need to look harder.
-  
-  // Let's assume a simple structure for streams: anything with a value in the yearly column that isn't a total row
   const streams: RevenueStream[] = [];
-  
-  // Mocking streams extraction if we can't identify them easily, 
-  // or just grabbing rows that look like data.
-  // For this specific file, we saw "Payment Gateway Fees" in the logs.
-  
-  // Simple heuristic: If column A has text and Column B/C has numbers, and it's not "Total"
+  let totalMonthlyRevenue = 0;
+  let totalYearlyRevenue = 0;
+
+  // Find header row for Revenue table
+  let revHeaderRowIdx = -1;
   revenueData.forEach((row, idx) => {
-    const label = String(row[0] || "");
-    if (!label || label.includes("Total") || label.includes("Income/")) return;
-    
-    const val = cleanNumber(row[1]) || cleanNumber(row[2]); // Check col B or C
-    if (val > 1000000) { // Assuming meaningful revenue > 1M
-       streams.push({
-         id: `r-${idx}`,
-         name: label,
-         monthly: val / 12, // Estimate
-         yearly: val
-       });
+    if (row.includes("Income type") || row.includes("Income/month")) {
+      revHeaderRowIdx = idx;
     }
   });
-  
-  // Fallback if streams empty but we have totals
-  if (streams.length === 0 && totalYearly > 0) {
-    streams.push({ id: 'r-main', name: 'Main Revenue', monthly: totalMonthly, yearly: totalYearly });
+
+  if (revHeaderRowIdx !== -1) {
+    const headerRow = revenueData[revHeaderRowIdx];
+    const typeIdx = headerRow.indexOf("Income type");
+    const monthlyIdx = headerRow.indexOf("Income/month");
+    const yearlyIdx = headerRow.indexOf("Income/year");
+
+    if (typeIdx !== -1 && monthlyIdx !== -1 && yearlyIdx !== -1) {
+      for (let i = revHeaderRowIdx + 1; i < revenueData.length; i++) {
+        const row = revenueData[i];
+        if (!row || row.length === 0) continue;
+
+        const name = row[typeIdx];
+        const monthly = cleanNumber(row[monthlyIdx]);
+        const yearly = cleanNumber(row[yearlyIdx]);
+
+        if (name && yearly > 0) {
+          streams.push({
+            id: `r-${i}`,
+            name: String(name),
+            monthly,
+            yearly
+          });
+          totalMonthlyRevenue += monthly;
+          totalYearlyRevenue += yearly;
+        }
+      }
+    }
+  } else {
+    // Fallback to old logic if headers not found (unlikely given inspection)
+    // But inspection showed headers at row 0:
+    // ["Unit/Residence", "Residence", "Income type", "Payment Gateway Fees", "Average transaction/month", "Income/month", "Income/year"]
+    // So index 2, 5, 6
+    for (let i = 1; i < revenueData.length; i++) {
+      const row = revenueData[i];
+      if (!row || row.length < 7) continue;
+       const name = row[2];
+       const monthly = cleanNumber(row[5]);
+       const yearly = cleanNumber(row[6]);
+       
+       if (name && yearly > 0) {
+         streams.push({
+           id: `r-${i}`,
+           name: String(name),
+           monthly,
+           yearly
+         });
+         totalMonthlyRevenue += monthly;
+         totalYearlyRevenue += yearly;
+       }
+    }
   }
 
+  // --- 5. SUMMARY CALCULATION ---
+  // Since SUMMARY sheet is missing, we calculate
+  // Total Cost = Resource(??) + OPEX + CAPEX
+  // Resource cost is tricky without the sheet. In the old file, 'Pegawai' sum was ~1.5B, which matched 'Resource' in summary.
+  // So we will assume Resource Cost = Employee Cost.
+  
+  const resourceCost = totalEmployeeCostYearly;
+  const calculatedTotalCost = resourceCost + totalOpexYearly + totalCapex;
+
+  const summary: Summary = {
+    totalCost: calculatedTotalCost,
+    totalIncome: totalYearlyRevenue,
+    revenue: totalYearlyRevenue,
+    resourceCost: resourceCost,
+    opexCost: totalOpexYearly,
+    capexCost: totalCapex
+  };
+
   return {
-    summary: {
-      ...summary,
-      totalIncome: totalYearly || summary.totalIncome, // Prefer revenue sheet calculation for income
-      revenue: totalYearly || summary.revenue
-    },
+    summary,
     capex,
     opex,
     employees,
     revenue: {
       streams,
-      totalMonthly,
-      totalYearly
+      totalMonthly: totalMonthlyRevenue,
+      totalYearly: totalYearlyRevenue
     }
   };
 };

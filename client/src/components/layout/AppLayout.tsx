@@ -9,7 +9,8 @@ import {
   LineChart, 
   Menu,
   X,
-  Wallet
+  Wallet,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,14 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("authenticated");
+    localStorage.removeItem("user");
+    setLocation("/login");
+  };
 
   const navItems = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -32,6 +39,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   ];
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  const user = JSON.parse(localStorage.getItem("user") || '{"name":"Guest","email":"guest@hemitech.id"}');
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-hidden">
@@ -95,14 +104,25 @@ export function AppLayout({ children }: AppLayoutProps) {
         </nav>
 
         <div className="p-4 m-4 rounded-xl bg-sidebar-accent/50 border border-sidebar-border/50 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-sidebar-primary to-emerald-400 flex items-center justify-center text-sidebar-primary-foreground font-bold text-xs shadow-sm">
-              HT
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 overflow-hidden flex-1">
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-sidebar-primary to-emerald-400 flex items-center justify-center text-sidebar-primary-foreground font-bold text-xs shadow-sm flex-shrink-0">
+                {user.name?.charAt(0) || "G"}
+              </div>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-medium truncate text-sidebar-foreground">{user.name || "Guest User"}</span>
+                <span className="text-xs text-sidebar-foreground/50 truncate">{user.email}</span>
+              </div>
             </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium truncate text-sidebar-foreground">Admin User</span>
-              <span className="text-xs text-sidebar-foreground/50 truncate">admin@hemitech.id</span>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleLogout}
+              className="flex-shrink-0 h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </aside>

@@ -287,5 +287,31 @@ export async function registerRoutes(
     }
   });
 
+  // ============= AUTH ROUTES =============
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      // Hardcoded credentials
+      const VALID_EMAIL = "guest@hemitech.id";
+      const VALID_PASSWORD = "guest2025";
+
+      if (email === VALID_EMAIL && password === VALID_PASSWORD) {
+        res.json({
+          success: true,
+          user: {
+            email: VALID_EMAIL,
+            name: "Guest User",
+          },
+        });
+      } else {
+        res.status(401).json({ error: "Invalid email or password" });
+      }
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(500).json({ error: "Failed to authenticate" });
+    }
+  });
+
   return httpServer;
 }
